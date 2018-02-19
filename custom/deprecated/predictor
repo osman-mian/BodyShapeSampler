@@ -1,0 +1,41 @@
+def predictor(smpl,labels,unique_labels,gender):
+	
+	aa = -2;
+	aa_2= 0;
+	betas1 = np.arange(aa, aa_2, 1)
+	betas2 = np.arange(aa, aa_2, 1)
+	betas3 = np.arange(aa, aa_2, 1) 
+	
+	pca = PCA(n_components=3, svd_solver='full');
+	loaded = pkl.load(open(join('./custom/pkls/',gender+'_part_priors.pkl')))
+	
+	
+	for beta1 in betas1:
+		smpl.betas[1]=beta1;
+		for beta2 in betas2:
+			smpl.betas[2]=beta2;
+			for beta3 in betas3:
+				smpl.betas[3]=beta3;
+				for lab in unique_labels:
+					verts = smpl.r
+					faces = smpl.f
+					
+					#extract relevent faces
+					part_indices = [index for index, value in enumerate(labels) if value == lab]
+					part_vertices=verts[part_indices, :]
+					part_vertices = pca.fit_transform(verts[part_indices, :])
+					mask = np.in1d(faces, part_indices)
+					mask = (mask.reshape(faces.shape[0],3))
+					mask = (mask.all(axis=1))
+					mask_real = (np.argwhere(mask == True))
+					face_vertices = (np.squeeze(faces[mask_real,:]))
+					
+					verts_sdev=np.std(part_vertices, axis=0);
+					prob_ =loaded[lab].getProbability(verts_sdev);
+					
+					print prob_;
+					print '-----------------'
+				#print smpl.betas;
+				#import ipdb; ipdb.set_trace();
+
+	

@@ -1,0 +1,234 @@
+To extract reconstruction from PCA
+
+print 'Begin Reconstructing for ',lab
+		for mm in range(t_points.shape[0]):
+			print mm, ' was attempted'
+			alphas=t_points[mm]
+			print alphas
+
+			for i in range(comps):
+				reconstructed[mm,:] = reconstructed[mm] + (alphas[i]*axis_[i]);
+
+			reconstructed[mm] = reconstructed[mm] + means;
+
+			print "Recovered:  ",reconstructed[mm]
+			print "Original :  ",data_mat[mm]
+			print "Difference: ",np.sum(np.square(reconstructed[mm]-data_mat[mm]));
+
+
+			new_part =np.reshape(reconstructed[mm],(len(part_indices),3));
+			verts2 =np.copy(verts)
+			verts2[part_indices,:]=new_part;
+			visualize_point_cloud(verts2, face_vertices, mv=mv)
+			import ipdb; ipdb.set_trace();
+
+			new_part =np.reshape(data_mat[mm],(len(part_indices),3));
+			verts2[part_indices,:]=new_part;
+			visualize_point_cloud(verts2, face_vertices, mv=mv)
+			import ipdb; ipdb.set_trace();
+			
+			
+---------------------------------------
+from os.path import join
+import cPickle as pkl
+import numpy as np
+from solution.visualize_point_cloud import visualize_point_cloud
+from smpl_utils import load_smpl
+from math import pi
+import chumpy as ch
+from time import sleep
+from custom.Accumulator import Accumulator;
+from sklearn.decomposition import PCA
+
+def SaveStats(accumulators,gender):
+	with open(join('./custom/pkls/',gender+'_part_priors.pkl'),'wb') as file_:
+		pkl.dump(accumulators,file_);
+
+def main():
+
+	MAYAVI = True
+	gender = 'female'
+	data_path = './data/'
+    
+	if not MAYAVI:
+		from body.mesh.meshviewer import MeshViewers
+		mv = MeshViewers(shape=[1,2])
+	else:
+		from mayavi.mlab import triangular_mesh, figure
+		mv = figure(size=(800,800))
+    
+    
+	smpl = load_smpl(gender=gender)
+    
+	tm = visualize_point_cloud(smpl.r, smpl.f, mv=mv)
+	print("Set the view angle as desired in gui")
+	import ipdb; ipdb.set_trace();
+	
+	labels = pkl.load(open(join(data_path, 'condensed_partnames_per_vertex.pkl')))
+	
+	unique_labels = list(set(labels))
+	#unique_labels =  ['leftHand','rightHand','rightArm','upperBody',]
+	
+	creator(smpl,labels,unique_labels,gender,mv);
+	#predictor(smpl,labels,unique_labels,gender);
+
+	return;
+	
+def creator(smpl,labels,unique_labels,gender,mv=None):
+	
+	zz =3
+	betas1 = np.arange(-zz, zz, 0.5)
+	betas2 = np.arange(-zz, zz, 0.5)
+	betas3 = np.arange(-zz, zz, 0.5)
+	pca = PCA(n_components=3, svd_solver='auto');
+	
+	first_frame=False
+	accumulators={};
+	for lab in unique_labels:
+		accumulators[lab]=Accumulator();
+	
+	data_mat=np.array([]);
+	for lab in unique_labels:
+		verts = smpl.r
+		faces = smpl.f
+		part_indices = [index for index, value in enumerate(labels) if value == lab]
+		
+		for beta1 in betas1:
+			smpl.betas[1]=beta1;
+			for beta2 in betas2:
+				smpl.betas[2]=beta2;
+				for beta3 in betas3:
+					smpl.betas[3]=beta3;
+					if first_frame: 
+						#tm = visualize_point_cloud(smpl.r, smpl.f, mv=mv)
+						# Set the view angle as desired
+						#print("Set the view angle as desired in gui")
+						#import ipdb; ipdb.set_trace();
+						first_frame = False
+					else: 
+						#visualize_point_cloud(smpl.r, smpl.f, mv=mv, mlab_obj=tm)
+						if len(data_mat)==0:
+							data_mat = np.reshape( verts[part_indices], (1,len(part_indices*3)));
+						else:
+							data_mat = np.vstack( (data_mat,np.reshape( verts[part_indices], (1,len(part_indices*3)))));
+						
+						#print data_mat;
+						#import ipdb; ipdb.set_trace();
+						#extract relevent faces
+						#part_vertices = pca.fit_transform(verts[part_indices, :])
+						
+						#update statistics
+						
+						
+						
+						
+						#visualize
+						#isualize_point_cloud(verts, face_vertices, mv=mv)
+
+						#sleep(0.3)
+						
+					#print smpl.betas;	
+		mask = np.in1d(faces, part_indices)
+		mask = (mask.reshape(faces.shape[0],3))
+		mask = (mask.all(axis=1))
+		mask_real = (np.argwhere(mask == True))
+		face_vertices = (np.squeeze(faces[mask_real,:]))
+		#print "Recovered: ",reconstructed[0]
+		#print "Original : ",data_mat[0]
+		
+		
+					
+		comps = np.min(data_mat.shape)
+		means = np.mean(data_mat,axis=0)
+		mean_pts = np.copy(data_mat);
+		
+		print 'Begin PCA for ',lab
+		reconstructed = np.zeros(data_mat.shape);
+		
+		for mm in range(data_mat.shape[0]):
+			mean_pts [:,mm] = data_mat[:,mm] - means[mm];
+			reconstructed[:,mm]=means[mm];
+			
+		pca = PCA(n_components=comps, svd_solver='auto');
+		pca.fit(mean_pts);
+		t_points=pca.transform(mean_pts);
+		
+		
+		#print "Data shape: ",data_mat.shape;
+		#print "Means shape: ",means.shape;
+		#print "MeanPts shape: ",mean_pts.shape;
+		#print "Components Shape: ",pca.components_.shape;
+		#print "Transformed Shape: ",t_points.shape;
+
+		
+		#for mm in range(t_points.shape[0]):
+		#	alphas=np.copy(t_points[mm]);
+		#	for i in range(comps):
+		#		reconstructed[mm] = reconstructed[mm] + alphas[i]*pca.components_[i];
+		
+		print "Recovered: ",reconstructed[0]
+		print "Original : ",data_mat[0]
+		
+		new_part =np.reshape(reconstructed[0],(len(part_indices),3));
+		verts2 =np.copy(verts)
+		verts2[part_indices,:]=new_part;
+		visualize_point_cloud(verts2, face_vertices, mv=mv)
+		
+		import ipdb; ipdb.set_trace();
+		mew   = np.mean(part_vertices,axis=0);
+		sigma = np.std (part_vertices,axis=0);
+		accumulators[lab].addMean(mew);
+		accumulators[lab].addStdev(sigma);
+	
+	for key in accumulators:
+		accumulators[key].calculateSdevDistribution();
+		
+	SaveStats(accumulators,gender);
+	
+	print 'Saved...';
+	return;
+	
+	
+def predictor(smpl,labels,unique_labels,gender):
+	
+	aa = -2;
+	aa_2= 0;
+	betas1 = np.arange(aa, aa_2, 1)
+	betas2 = np.arange(aa, aa_2, 1)
+	betas3 = np.arange(aa, aa_2, 1) 
+	
+	pca = PCA(n_components=3, svd_solver='full');
+	loaded = pkl.load(open(join('./custom/pkls/',gender+'_part_priors.pkl')))
+	
+	
+	for beta1 in betas1:
+		smpl.betas[1]=beta1;
+		for beta2 in betas2:
+			smpl.betas[2]=beta2;
+			for beta3 in betas3:
+				smpl.betas[3]=beta3;
+				for lab in unique_labels:
+					verts = smpl.r
+					faces = smpl.f
+					
+					#extract relevent faces
+					part_indices = [index for index, value in enumerate(labels) if value == lab]
+					part_vertices=verts[part_indices, :]
+					part_vertices = pca.fit_transform(verts[part_indices, :])
+					mask = np.in1d(faces, part_indices)
+					mask = (mask.reshape(faces.shape[0],3))
+					mask = (mask.all(axis=1))
+					mask_real = (np.argwhere(mask == True))
+					face_vertices = (np.squeeze(faces[mask_real,:]))
+					
+					verts_sdev=np.std(part_vertices, axis=0);
+					prob_ =loaded[lab].getProbability(verts_sdev);
+					
+					print prob_;
+					print '-----------------'
+				#print smpl.betas;
+				#import ipdb; ipdb.set_trace();
+
+	
+	
+main()

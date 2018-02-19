@@ -1,0 +1,15 @@
+Run scripts with
+ipython --gui=wx <name_of_script.py>
+
+###########################################################################
+The following order should be used when training the new model:
+
+1. ipython --gui=wx shape_dataset.py 
+2. ipython --gui=wx ./custom/Conditionals_extractor.py
+3. ipython --gui=wx ./BodyShapeSampler.py
+
+
+[1] will generate the priors
+[2] will calculate conditionals
+[3] will sample body shapes
+###########################################################################
