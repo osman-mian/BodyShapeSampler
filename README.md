@@ -7,6 +7,7 @@ To download SMPL visit : http://smpl.is.tue.mpg.de/ (Please be sure to read the 
 
 
 ###########################################################
+
 Run scripts with 
 ipython --gui=wx <name_of_script.py>
 
@@ -26,7 +27,7 @@ First: cd to the SMPL folder
 [3] will sample body shapes. <br>
 
 
-###########################################################################
+###########################################################
 
 
 Notes:
